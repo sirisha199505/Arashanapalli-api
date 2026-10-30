@@ -1,0 +1,92 @@
+[
+ {
+  "name": "Plywood",
+  "icon": "layers",
+  "position": 0
+ },
+ {
+  "name": "Boards & MDF",
+  "icon": "layers",
+  "position": 1
+ },
+ {
+  "name": "Laminates",
+  "icon": "grid",
+  "position": 2
+ },
+ {
+  "name": "Veneers",
+  "icon": "layers",
+  "position": 3
+ },
+ {
+  "name": "Wall Panels",
+  "icon": "grid",
+  "position": 4
+ },
+ {
+  "name": "Door Hardware",
+  "icon": "door",
+  "position": 5
+ },
+ {
+  "name": "Locks",
+  "icon": "shield",
+  "position": 6
+ },
+ {
+  "name": "Furniture Accessories",
+  "icon": "monitor",
+  "position": 7
+ },
+ {
+  "name": "Kitchen Fittings",
+  "icon": "box",
+  "position": 8
+ },
+ {
+  "name": "Wardrobe Fittings",
+  "icon": "box",
+  "position": 9
+ },
+ {
+  "name": "Glass & Aluminium Fittings",
+  "icon": "diamond",
+  "position": 10
+ },
+ {
+  "name": "Safety Lockers",
+  "icon": "shield",
+  "position": 11
+ },
+ {
+  "name": "Adhesives & Polish",
+  "icon": "tag",
+  "position": 12
+ },
+ {
+  "name": "Edge Banding",
+  "icon": "tag",
+  "position": 13
+ },
+ {
+  "name": "Screws & Fasteners",
+  "icon": "tag",
+  "position": 14
+ },
+ {
+  "name": "Doors & Frames",
+  "icon": "door",
+  "position": 15
+ },
+ {
+  "name": "Flooring",
+  "icon": "grid",
+  "position": 16
+ },
+ {
+  "name": "Lighting & LED Profiles",
+  "icon": "bulb",
+  "position": 17
+ }
+]

@@ -7,6 +7,16 @@ class App::Services::Products < App::Services::Base
     }
   end
 
+  def create
+    data = data_for(:save)
+    data['id'] = data['id'].presence || model.slug_for(data['name'])
+    save(model.new(data))
+  end
+
+  def update
+    super(data_for(:save).except('id'))
+  end
+
   def list
     ds = model.order(:position, :name)
     ds = ds.where(category: qs[:category]) if qs[:category].present?

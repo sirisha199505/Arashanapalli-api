@@ -16,7 +16,7 @@ RUN bundle install
 
 COPY . .
 
-# Port comes from $PORT (set by Render); config/puma.rb falls back to 9292
+# Port comes from $PORT (set by Render); config/puma.rb falls back to 9393
 EXPOSE 10000
 ENV PORT=10000
 

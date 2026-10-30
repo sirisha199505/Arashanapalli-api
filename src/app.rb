@@ -59,7 +59,9 @@ module App
         after_connect: Proc.new { logger.info("Database connection established") }
       )
       @db.extension(:connection_validator)
-      @db.pool.connection_validation_timeout = 3600
+      # Neon (serverless Postgres) closes idle connections after a few minutes, so check any connection
+      # that has been idle for 30s before using it — otherwise the first request after a quiet spell fails
+      @db.pool.connection_validation_timeout = 30
     end
     
     def setup_aws_config

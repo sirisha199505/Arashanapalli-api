@@ -46,12 +46,14 @@ def boot_app!
 end
 
 namespace :db do
-  desc "Seed brands and products from src/seeds/catalog.json (skips ids that already exist, so admin edits are kept)"
+  desc "Seed categories, brands and products from src/seeds/ (skips ids that already exist, so admin edits are kept)"
   task :seed do
     boot_app!
     data = JSON.parse(File.read(File.join(App.root, 'src/seeds/catalog.json')))
     db = App.db
+    categories = JSON.parse(File.read(File.join(App.root, 'src/seeds/categories.json')))
     db.transaction do
+      db[:categories].insert_conflict.multi_insert(categories)
       db[:brands].insert_conflict.multi_insert(
         data['brands'].map { |b| b.merge('specs' => Sequel.pg_jsonb(b['specs'])) }
       )
@@ -59,7 +61,7 @@ namespace :db do
         data['products'].map { |p| p.merge('brand_ids' => Sequel.pg_array(p['brand_ids'], :text)) }
       )
     end
-    puts "brands: #{db[:brands].count}, products: #{db[:products].count}"
+    puts "categories: #{db[:categories].count}, brands: #{db[:brands].count}, products: #{db[:products].count}"
   end
 end
 

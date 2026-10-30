@@ -1,6 +1,7 @@
 # Puma config — used locally and in Docker/Render.
-# Render (and most hosts) tell the app which port to use via $PORT; 9292 is the local default.
-port ENV.fetch('PORT', 9292)
+# Render (and most hosts) tell the app which port to use via $PORT; locally it's 9393
+# (not Puma's usual 9292, which another project on this machine uses).
+port ENV.fetch('PORT', 9393)
 
 threads_count = Integer(ENV.fetch('RAILS_MAX_THREADS', ENV.fetch('POOL_SIZE', 5)))
 threads threads_count, threads_count

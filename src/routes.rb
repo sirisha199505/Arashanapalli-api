@@ -76,6 +76,16 @@ class App::Routes < Roda
           do_crud(Quotes, r, 'RLU')
         end
 
+        r.on 'categories' do
+          do_crud(Categories, r, 'CRUDL')
+        end
+
+        r.get('dashboard') { Dashboard[r].show }
+
+        r.on 'customers' do
+          r.get { Customers[r].list }
+        end
+
         # Add other admin routes here
       rescue => e
         App.logger.error("API Error: #{e.message}")
