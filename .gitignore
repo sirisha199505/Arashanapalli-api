@@ -1,0 +1,17 @@
+.DS_Store
+.byebug_history
+newrelic_agent.log
+./older
+*.db
+
+# Environment files - never commit secrets
+.env
+.env.local
+.env.*.local
+
+# Log files
+log/
+
+# Temp files
+tmp/
+*.tmp
