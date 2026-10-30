@@ -16,6 +16,8 @@ RUN bundle install
 
 COPY . .
 
-EXPOSE 8080
+# Port comes from $PORT (set by Render); config/puma.rb falls back to 9292
+EXPOSE 10000
+ENV PORT=10000
 
-CMD ["puma", "-p", "8080", "-b", "tcp://0.0.0.0"]
+CMD ["bundle", "exec", "puma", "-C", "config/puma.rb"]
