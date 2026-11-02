@@ -10,11 +10,30 @@ class App::Services::Products < App::Services::Base
   def create
     data = data_for(:save)
     data['id'] = data['id'].presence || model.slug_for(data['name'])
-    save(model.new(data))
+    save(model.new(data)) do |record|
+      Audit.log(:product, record.id, :created, ref: record.code, note: record.name)
+      return_success(record.to_pos)
+    end
   end
 
   def update
-    super(data_for(:save).except('id'))
+    data = data_for(:save).except('id')
+    item.set_fields(data, data.keys)
+    item.valid?
+    changes = Audit.changes_of(item)
+    save(item) do |record|
+      Audit.log(:product, record.id, :updated, ref: record.code, changes: changes, note: record.name) if changes.any?
+      return_success(record.to_pos)
+    end
+  end
+
+  # hide (it stays on old quotations)
+  def remove
+    item.active = false
+    save(item) do |record|
+      Audit.log(:product, record.id, :hidden, ref: record.code, note: record.name)
+      return_success(record.to_pos)
+    end
   end
 
   def list

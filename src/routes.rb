@@ -32,10 +32,7 @@ class App::Routes < Roda
       
       # Public endpoints (no auth required)
       r.post('login') { Session[r].login }
-      r.post('forgot-password') { Users[r].forgot_password }
-      r.post('validate-password-token') { Users[r].validate_password_token }
-      r.post('reset-password') { Users[r].reset_password }
-      
+
       r.get 'version' do
         { status: 'success', version: 1 }
       end
@@ -43,26 +40,67 @@ class App::Routes < Roda
       # Website: catalog to render, and quote requests customers send
       r.get('catalog') { Catalog[r].show }
       r.post('quotes') { Quotes[r].submit }
+      r.get('quotes/track', String) { |number| Quotes[r, number: number].track }
+      r.get('quotes/pdf', String) { |number| Quotes[r, number: number].pdf }
+      r.get('quotes/compare.pdf') { Quotes[r].compare_pdf }
+      r.get('quotes/compare') { Quotes[r].compare }
+
+      # Customers: sign in with a code sent to their email, then see their quotations
+      r.post('customer/code') { CustomerAccount[r].request_code }
+      r.post('customer/verify') { CustomerAccount[r].verify }
+      r.get('customer/quotes') { CustomerAccount[r].quotes }
 
       # Authentication required for all routes below
       auth_required!
 
-      # User profile routes
+      # The signed-in staff member
       r.on 'me' do
         r.get('info') { Users[r].info }
         r.put('update-password') { Users[r].update_password }
       end
 
-      # Admin-only routes
-      admin_required!
-      
-      # Wrap all admin routes in error handling
+      # Any staff (Admin, Sales, Limited sales — what each sees is limited inside the services)
+      staff_required!
+
       begin
+        r.on 'quotes' do
+          r.post('staff') { Quotes[r].create } # walk-in / phone quotations made by the sales team
+          r.post(Integer, 'revise') { |id| Quotes[r, id: id].revise } # new version: AT-…-001
+          r.post(Integer, 'activities') { |id| Quotes[r, id: id].log_activity } # follow-up actions
+          r.post(Integer, 'order') { |id| Quotes[r, id: id].convert } # accepted → order
+          do_crud(Quotes, r, 'RLU')
+        end
+
+        r.get('dashboard') { Dashboard[r].show }
+        r.get('staff') { Users[r].staff }
+
+        r.on 'customers' do
+          r.get { Customers[r].list }
+        end
+
+        r.on 'orders' do
+          do_crud(Orders, r, 'RLU')
+        end
+
+        r.on 'templates' do
+          do_crud(Templates, r, 'CRUDL')
+        end
+
+        # Admin only: staff accounts and the catalog
+        admin_required!
+
+        r.get('audit') { AuditLogs[r].list }
+
         r.on 'users' do
-          do_crud(Users, r, 'CRUDL')
+          do_crud(Users, r, 'CRUL')
         end
 
         r.on 'products' do
+          # bulk updates, a page of products at a time (before the CRUD routes, which would read 'bulk' as an id)
+          r.is 'bulk' do
+            r.get { ProductBulk[r].list }
+            r.put { ProductBulk[r].update }
+          end
           r.delete(String) {|id| Products[r, id: id].remove } # soft delete: saved quotes still refer to it
           do_crud(Products, r, 'CRUL', key: String)
         end
@@ -72,22 +110,12 @@ class App::Routes < Roda
           do_crud(Brands, r, 'CRUL', key: String)
         end
 
-        r.on 'quotes' do
-          do_crud(Quotes, r, 'RLU')
-        end
-
         r.on 'categories' do
           do_crud(Categories, r, 'CRUDL')
         end
 
         r.on 'series' do
           do_crud(Series, r, 'CRUDL')
-        end
-
-        r.get('dashboard') { Dashboard[r].show }
-
-        r.on 'customers' do
-          r.get { Customers[r].list }
         end
 
         # Add other admin routes here
@@ -120,9 +148,15 @@ class App::Routes < Roda
     end
   end
 
+  def staff_required!
+    unless App.cu.user_obj&.staff?
+      request.halt(403, {'Content-Type' => 'application/json'},{ status: 'error', data: 'Not allowed' }.to_json)
+    end
+  end
+
   def admin_required!
-    unless (App.cu.user_obj.admin? || App.cu.user_obj.rgm?)
-      request.halt(403, {'Content-Type' => 'application/json'},{ status: 'Forbidden!' }.to_json)
+    unless App.cu.user_obj&.admin?
+      request.halt(403, {'Content-Type' => 'application/json'},{ status: 'error', data: 'Only an admin can do that' }.to_json)
     end
   end
 end

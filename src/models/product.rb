@@ -45,6 +45,15 @@ class App::Models::Product < Sequel::Model
     validates_integer :base_price
   end
 
+  # The price of this product in a brand: the brand's own price if one is set, else base price × brand factor
+  def price_for(brand, details = nil)
+    details&.price || standard_price(brand)
+  end
+
+  def standard_price(brand)
+    (base_price * brand.price_factor.to_f).round
+  end
+
   # Shape the frontend catalog expects
   def as_catalog
     {

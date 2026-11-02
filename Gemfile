@@ -37,3 +37,6 @@ end
 gem "dotenv", "~> 3.2", group: :development
 
 gem "csv", "~> 3.3"
+
+gem "prawn", "~> 2.5"
+gem "prawn-table", "~> 0.2.2"

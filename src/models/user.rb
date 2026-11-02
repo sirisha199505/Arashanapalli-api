@@ -1,32 +1,35 @@
 class App::Models::User < Sequel::Model
   include BCrypt
 
-  # Associations
-  # one_to_many :user_properties
+  # Staff roles
+  #   admin   — everything: staff accounts, catalog, all quotations, prices
+  #   sales   — all quotations; can create, edit and override prices; orders
+  #   limited — only quotations assigned to or created by them; list prices only
+  ROLES = { admin: 1, sales: 2, limited: 3 }.freeze
+  ROLE_NAMES = { 1 => 'Admin', 2 => 'Sales', 3 => 'Limited sales' }.freeze
+  MIN_PASSWORD = 8
 
-  # Role constants
-  ROLES = {
-    admin: 1,
-    rgm: 2,
-    gm: 3
-  }.freeze
+  def admin? = role == ROLES[:admin]
+  def sales? = role == ROLES[:sales]
+  def limited? = role == ROLES[:limited]
+  def staff? = active && ROLE_NAMES.key?(role)
 
-  def admin?
-    role == ROLES[:admin]
-  end
-
-  def rgm?
-    role == ROLES[:rgm]
-  end
-
-  def gm?
-    role == ROLES[:gm]
-  end
+  # may set their own prices on quotation lines
+  def can_edit_prices? = admin? || sales?
 
   def validate
     super
     validates_presence [:full_name, :email]
+    validates_format(/\A[^@\s]+@[^@\s]+\.[^@\s]+\z/, :email, message: 'is not a valid email')
     validates_unique(:email) { |ds| ds.where(active: true) }
+    validates_includes ROLE_NAMES.keys, :role, message: 'must be Admin, Sales or Limited sales'
+    errors.add(:password, "must be at least #{MIN_PASSWORD} characters") if @password_too_short
+    errors.add(:password, 'is required') if new? && encoded_password.blank?
+  end
+
+  def before_validation
+    self.email = email.to_s.strip.downcase
+    super
   end
 
   def password
@@ -34,6 +37,9 @@ class App::Models::User < Sequel::Model
   end
 
   def password=(new_password)
+    @password_too_short = new_password.to_s.length < MIN_PASSWORD
+    return if @password_too_short
+
     @password = Password.create(new_password)
     self.encoded_password = @password
   end
@@ -43,70 +49,11 @@ class App::Models::User < Sequel::Model
   end
 
   def role_name
-    case role
-    when ROLES[:admin]
-      "Admin"
-    when ROLES[:rgm]
-      "RGM"
-    when ROLES[:gm]
-      "GM"
-    else
-      "Unknown"
-    end
-  end
-
-  def generate_reset_token!
-    self.reset_token = SecureRandom.urlsafe_base64
-    self.reset_sent_at = Time.now
-    save
-  end
-
-  def send_password_reset_email(base_url)
-    generate_reset_token!
-
-    user_email = self.email
-    user_name = self.full_name
-    reset_url = "#{base_url}/reset_password?token=#{CGI.escape(reset_token)}"
-
-    mail = Mail.new do
-      from    ENV.fetch('EMAIL_FROM', 'noreply@example.com')
-      to      user_email
-      subject 'Reset your password'
-      html_part do
-        content_type 'text/html; charset=UTF-8'
-        body <<-HTML
-          <html>
-          <body>
-            <h1>Reset your password</h1>
-            <p>Hello #{user_name},</p>
-            <p>We received a request to reset your password. Click the link below to reset your password:</p>
-            <p><a href="#{reset_url}">Reset your password</a></p>
-            <p>If you did not request a password reset, please ignore this email.</p>
-            <p>Thank you,<br/>Support Team</p>
-          </body>
-          </html>
-        HTML
-      end
-    end
-
-    mail.deliver!
-  end
-
-  def valid_property_ids
-    if admin?
-      App::Models::Property.where(client_id: client_id).select_map(:id)
-    else
-      property_ids || []
-    end
-  end
-
-  def properties
-    property_ids || []
+    ROLE_NAMES.fetch(role, 'Unknown')
   end
 
   def as_pos
-    as_json(only:
-      [:email, :full_name, :phone_number, :role, :id, :active, :created_at, :updated_at, :last_logged_in_at, :parent_id]
-    ).merge!(role_name: role_name, property_count: properties.length)
+    as_json(only: [:id, :email, :full_name, :phone_number, :role, :active, :created_at, :updated_at, :last_logged_in_at])
+      .merge!('role_name' => role_name)
   end
 end

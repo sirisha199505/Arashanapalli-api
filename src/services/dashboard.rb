@@ -4,7 +4,8 @@ class App::Services::Dashboard < App::Services::Base
 
   # Admin: headline numbers for the dashboard, for the chosen period
   def show
-    quotes = in_period(Quote.dataset)
+    mine = Quote.visible_to(App.cu.user_obj, Quote.latest) # one per quotation (its latest version); Limited sales: their own
+    quotes = in_period(mine)
     status_counts = quotes.group_and_count(:status).to_hash(:status, :count)
     value = quotes.sum(:total).to_i
     count = quotes.count
@@ -18,8 +19,10 @@ class App::Services::Dashboard < App::Services::Base
         total: count,
         value: value,
         avg_value: count.positive? ? (value / count.to_f).round(2) : 0,
-        won_value: quotes.where(status: 'won').sum(:total).to_i,
-        **Quote::STATUSES.to_h { |s| [s.to_sym, status_counts[s] || 0] }
+        accepted_value: quotes.where(status: 'accepted').sum(:total).to_i,
+        **Quote::STATUSES.to_h { |s| [s.to_sym, status_counts[s] || 0] },
+        contacted: quotes.where(contacted: true).count,
+        not_contacted: quotes.where(contacted: false, status: Quote::IN_PROGRESS).count
       },
       channels: { whatsapp: channels['whatsapp'] || { count: 0, value: 0 }, email: channels['email'] || { count: 0, value: 0 } },
       customers: {
@@ -31,15 +34,32 @@ class App::Services::Dashboard < App::Services::Base
         brands: Brand.where(active: true).count,
         categories: Category.where(active: true).count
       },
-      # not limited to the period: requests still waiting for a first reply
-      awaiting_reply: Quote.where(status: 'new').count,
-      recent: Quote.order(Sequel.desc(:created_at)).limit(5).all.map do |q|
-        q.values.slice(:id, :quote_number, :customer_name, :customer_phone, :total, :status, :created_at)
+      orders: orders_summary(count),
+      # not limited to the period: open quotations nobody has contacted yet, and follow-ups due
+      awaiting_reply: mine.where(status: Quote::IN_PROGRESS, contacted: false).count,
+      follow_ups_due: mine.where(status: Quote::IN_PROGRESS).where { follow_up_on <= Date.today }.count,
+      expiring_soon: mine.where(status: Quote::IN_PROGRESS).where { (valid_until >= Date.today) & (valid_until <= Date.today + 3) }.count,
+      recent: mine.order(Sequel.desc(:created_at)).limit(5).all.map do |q|
+        q.values.slice(:id, :quote_number, :customer_name, :customer_phone, :total, :status, :contacted, :created_at)
       end
     )
   end
 
   private
+
+  # orders in the period (cancelled ones left out of the money), what's still to deliver, and quote → order conversion
+  def orders_summary(quote_count)
+    mine = Order.visible_to(App.cu.user_obj)
+    orders = in_period(mine).exclude(status: 'cancelled')
+    value = orders.sum(:total).to_i
+    paid = orders.sum(:amount_paid).to_i
+    count = orders.count
+    {
+      total: count, value: value, paid: paid, balance: value - paid,
+      to_deliver: mine.where(status: %w[confirmed processing ready]).count,
+      conversion: quote_count.positive? ? (count * 100.0 / quote_count).round : 0
+    }
+  end
 
   def period
     PERIOD_DAYS.key?(qs[:period]) || qs[:period] == 'all' ? qs[:period] : 'today'
