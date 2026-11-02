@@ -3,7 +3,7 @@ class App::Services::Products < App::Services::Base
 
   def self.fields
     {
-      save: [:id, :name, :category, :image, :description, :unit, :base_price, { brand_ids: {} }, :mock, :position, :active]
+      save: [:id, :name, :category, :image, :description, :unit, :base_price, { brand_ids: {} }, :mock, :position, :active, :code, :new_arrival, { series_ids: {} }]
     }
   end
 
@@ -20,7 +20,10 @@ class App::Services::Products < App::Services::Base
   def list
     ds = model.order(:position, :name)
     ds = ds.where(category: qs[:category]) if qs[:category].present?
-    ds = ds.where(Sequel.ilike(:name, "%#{qs[:search]}%")) if qs[:search].present?
+    if qs[:search].present?
+      ds = ds.where(Sequel.ilike(:name, "%#{qs[:search]}%") | { code: Product.normalize_code(qs[:search]) })
+    end
+    ds = ds.where(new_arrival: true) if qs[:new_arrival] == 'true'
     count = ds.count
     return_success(ds.offset(offset).limit(limit).all.map(&:to_pos), total_pages: (count / page_size.to_f).ceil)
   end

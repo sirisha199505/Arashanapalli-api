@@ -80,6 +80,10 @@ class App::Routes < Roda
           do_crud(Categories, r, 'CRUDL')
         end
 
+        r.on 'series' do
+          do_crud(Series, r, 'CRUDL')
+        end
+
         r.get('dashboard') { Dashboard[r].show }
 
         r.on 'customers' do

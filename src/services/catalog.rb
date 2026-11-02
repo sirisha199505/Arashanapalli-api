@@ -4,6 +4,7 @@ class App::Services::Catalog < App::Services::Base
   # so the website never sees a reference it can't resolve.
   def show
     brands = Brand.where(active: true).order(:position, :name).all
+    series = BrandSeries.where(active: true).order(:position, :name).all.group_by(&:brand_id)
     brand_ids = brands.map(&:id)
     hidden_categories = Category.where(active: false).select(:name)
 
@@ -14,7 +15,7 @@ class App::Services::Catalog < App::Services::Base
 
     return_success(
       categories: Category.where(active: true).order(:position, :name).all.map(&:as_catalog),
-      brands: brands.map(&:as_catalog),
+      brands: brands.map { |b| b.as_catalog(series[b.id] || []) },
       products: products
     )
   end

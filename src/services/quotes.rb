@@ -72,8 +72,9 @@ class App::Services::Quotes < App::Services::Base
       available = brand.present? && product.brand_ids.to_a.include?(brand.id)
       unit_price = available ? (product.base_price * brand.price_factor.to_f).round : nil
       {
-        product_id: product.id, product_name: product.name, category: product.category, unit: product.unit,
-        brand_id: brand&.id, brand_name: brand&.name, quantity: quantity,
+        product_id: product.id, product_code: product.code, product_name: product.name, category: product.category, unit: product.unit,
+        brand_id: brand&.id, brand_name: brand&.name, brand_code: brand&.code,
+        dynamic_code: brand && product.code && "#{product.code}-#{brand.code}", quantity: quantity,
         unit_price: unit_price, amount: unit_price && unit_price * quantity
       }
     end

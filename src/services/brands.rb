@@ -3,7 +3,7 @@ class App::Services::Brands < App::Services::Base
 
   def self.fields
     {
-      save: [:id, :name, :tier, :price_factor, { specs: {} }, :position, :active]
+      save: [:id, :name, :code, :tier, :price_factor, { specs: {} }, :position, :active]
     }
   end
 
@@ -17,7 +17,9 @@ class App::Services::Brands < App::Services::Base
     super(data_for(:save).except('id'))
   end
 
+  # each brand with its series (all of them, hidden ones too) for the admin
   def list
-    return_success(model.order(:position, :name).all.map(&:to_pos))
+    series = BrandSeries.order(:position, :name).all.group_by(&:brand_id)
+    return_success(model.order(:position, :name).all.map { |b| b.to_pos.merge('series' => (series[b.id] || []).map(&:to_pos)) })
   end
 end

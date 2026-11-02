@@ -61,6 +61,7 @@ namespace :db do
         data['products'].map { |p| p.merge('brand_ids' => Sequel.pg_array(p['brand_ids'], :text)) }
       )
     end
+    App::Models::Product.assign_missing_codes!
     puts "categories: #{db[:categories].count}, brands: #{db[:brands].count}, products: #{db[:products].count}"
   end
 end
