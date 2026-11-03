@@ -3,7 +3,8 @@ class App::Services::Products < App::Services::Base
 
   def self.fields
     {
-      save: [:id, :name, :category, :image, :description, :unit, :base_price, { brand_ids: {} }, :mock, :position, :active, :code, :new_arrival, { series_ids: {} }]
+      save: [:id, :name, :category, :image, :description, :unit, :base_price, { brand_ids: {} }, :mock, :position, :active, :code, :new_arrival, { series_ids: {} },
+             :sku, :specification, :hsn_code, :gst_rate]
     }
   end
 

@@ -9,6 +9,15 @@ module Company
   STATE_CODE = ENV.fetch('COMPANY_STATE_CODE', '36') # Telangana: buyers here pay CGST + SGST, others IGST
   SITE_URL = ENV.fetch('SITE_URL', '').chomp('/') # the website, for "track your quotation" links on PDFs
 
+  # Payment details printed on quotation PDFs. With a UPI ID set, each quotation gets a QR code for its exact total
+  # (scan in GPay / PhonePe / Paytm → amount and quotation ID filled in). Bank details are printed when set.
+  UPI_ID = ENV.fetch('PAYMENT_UPI_ID', '').strip # e.g. arashanapalli@okhdfcbank
+  UPI_NAME = ENV.fetch('PAYMENT_UPI_NAME', NAME) # the payee name the customer's app shows
+  BANK_NAME = ENV.fetch('PAYMENT_BANK_NAME', '')
+  ACCOUNT_NAME = ENV.fetch('PAYMENT_ACCOUNT_NAME', '')
+  ACCOUNT_NUMBER = ENV.fetch('PAYMENT_ACCOUNT_NUMBER', '')
+  IFSC = ENV.fetch('PAYMENT_IFSC', '').upcase
+
   # PLACEHOLDER terms — replace with the shop's real terms (QUOTE_TERMS, one term per line).
   TERMS = ENV['QUOTE_TERMS']&.split("\n")&.map(&:strip)&.reject(&:empty?) || [
     'Prices include GST at 18% as shown.',

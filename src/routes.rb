@@ -96,6 +96,9 @@ class App::Routes < Roda
         end
 
         r.on 'products' do
+          # the client's product Excel: check it (nothing saved), then import it
+          r.post('import', 'check') { ProductImports[r].check }
+          r.post('import') { ProductImports[r].run }
           # bulk updates, a page of products at a time (before the CRUD routes, which would read 'bulk' as an id)
           r.is 'bulk' do
             r.get { ProductBulk[r].list }

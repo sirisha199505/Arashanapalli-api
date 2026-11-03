@@ -59,7 +59,7 @@ class App::Models::Product < Sequel::Model
     {
       id: id, name: name, category: category, image: image, description: description,
       unit: unit, basePrice: base_price, brandIds: brand_ids.to_a, mock: mock,
-      code: code, newArrival: new_arrival, seriesIds: series_ids.to_a
-    }
+      code: code, newArrival: new_arrival, seriesIds: series_ids.to_a, spec: specification
+    }.compact
   end
 end

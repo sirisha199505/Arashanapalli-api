@@ -40,3 +40,9 @@ gem "csv", "~> 3.3"
 
 gem "prawn", "~> 2.5"
 gem "prawn-table", "~> 0.2.2"
+
+# UPI payment QR codes on quotation PDFs (pure Ruby, no image libraries)
+gem "rqrcode_core", "~> 2.1"
+
+# reading the client's product Excel files (Admin → Import products)
+gem "roo", "~> 2.10"

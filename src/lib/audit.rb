@@ -29,6 +29,18 @@ module Audit
     )
   end
 
+  # Many entries in one insert (imports): [{ entity_type, entity_id, ref, action, changes, note }]
+  def log_many(entries, batch_id:)
+    user = App::Helpers::CurrentUser.user_obj
+    now = Time.now
+    rows = entries.map do |e|
+      { entity_type: e[:entity_type].to_s, entity_id: e[:entity_id].to_s, ref: e[:ref], action: e[:action].to_s,
+        changes: Sequel.pg_jsonb((e[:changes] || {}).as_json), note: e[:note], batch_id: batch_id,
+        user_id: user&.id, user_name: user&.full_name || 'Customer (website)', created_at: now }
+    end
+    App::Models::AuditLog.dataset.multi_insert(rows, slice: 500) if rows.any?
+  end
+
   # Line-by-line differences between two versions of a quotation: added / removed products,
   # brand, quantity and quoted-price changes — [{ product, change, from, to }]
   def line_changes(old_items, new_items)

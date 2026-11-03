@@ -1,5 +1,7 @@
 require 'prawn'
 require 'prawn/table'
+require 'rqrcode_core'
+require 'erb'
 
 # Branded PDFs for quotations and quotation comparisons (A4): logo and shop details, the quotation, GST split,
 # validity and terms. DejaVu Sans is bundled because the PDF's built-in fonts have no ₹ sign.
@@ -11,6 +13,7 @@ module QuotePdf
   LINE = 'E5E2DC'
   TINT = 'F7F1EE'
   GREEN = '1E7B4F'
+  QR_SIZE = 92
 
   module_function
 
@@ -141,6 +144,8 @@ module QuotePdf
     end
 
     pdf.move_down 8
+    pdf.start_new_page if pdf.cursor < QR_SIZE + 40 # the totals and the payment QR stay together
+    top = pdf.cursor
     totals = [['Subtotal', inr(quote.subtotal)], *gst_lines(quote).map { |l, v| [l, inr(v)] }, ['Total', inr(quote.total)]]
     pdf.table(totals, position: :right, column_widths: [110, 90], cell_style: { size: 9, borders: [], padding: [2, 4] }) do |t|
       t.columns(1).align = :right
@@ -150,6 +155,8 @@ module QuotePdf
       t.row(-1).border_color = INK
       t.row(-1).padding = [5, 4, 2, 4]
     end
+    below_totals = pdf.cursor
+    pdf.move_cursor_to [below_totals, payment(pdf, quote, top)].min
 
     url = track_url(quote.quote_number)
     if url
@@ -159,6 +166,73 @@ module QuotePdf
     terms(pdf, quote.valid_until)
     footer(pdf)
     pdf.render
+  end
+
+  # A QR code for the exact total can be paid only while the quotation stands: priced, not lost, not expired
+  def payable?(quote)
+    Company::UPI_ID.present? && quote.total.to_i.positive? && quote.items.to_a.all? { |i| i['unit_price'] } &&
+      %w[draft sent contacted accepted].include?(App::Models::Quote::LEGACY_STATUSES.fetch(quote.status, quote.status)) && !quote.expired?
+  end
+
+  # upi://pay link for the quotation's total: any UPI app opens it with the payee, amount and quotation ID filled in
+  def upi_link(quote)
+    params = { pa: Company::UPI_ID, pn: Company::UPI_NAME, am: format('%.2f', quote.total.to_i), cu: 'INR', tn: "Quotation #{quote.quote_number}" }
+    # '@' stays as it is in the UPI ID: some UPI apps don't read %40
+    "upi://pay?#{params.map { |k, v| "#{k}=#{ERB::Util.url_encode(v).gsub('%40', '@')}" }.join('&')}"
+  end
+
+  # "Scan to pay" QR code and bank details, left of the totals (which start at `top`). Returns the y it ends at.
+  def payment(pdf, quote, top)
+    bank = [['Bank', Company::BANK_NAME], ['Account name', Company::ACCOUNT_NAME], ['Account no.', Company::ACCOUNT_NUMBER], ['IFSC', Company::IFSC]].reject { |_, v| v.empty? }
+    qr = payable?(quote)
+    return top unless qr || bank.any?
+
+    width = pdf.bounds.width - 220 # the totals take the right 200pt
+    pdf.bounding_box([0, top], width: width) do
+      start = pdf.cursor
+      text_at = 0
+      if qr
+        qr_code(pdf, upi_link(quote), at: [0, start], size: QR_SIZE)
+        text_at = QR_SIZE + 8
+      end
+      pdf.bounding_box([text_at, start], width: width - text_at) do
+        pdf.move_down 6 if qr # line the text up with the code inside the QR's quiet zone
+        if qr
+          pdf.text 'Scan to pay by UPI', size: 9.5, style: :bold
+          pdf.text "#{inr(quote.total)} · Quotation #{quote.quote_number}", size: 8.5, style: :bold, color: RED
+          pdf.text "UPI ID: #{Company::UPI_ID}", size: 8
+          pdf.text 'GPay, PhonePe, Paytm or any UPI app — the amount and quotation ID fill in by themselves.', size: 7, color: MUTED
+        else
+          pdf.text 'Payment details', size: 9.5, style: :bold
+        end
+        if bank.any?
+          pdf.move_down 4
+          pdf.text 'Bank transfer', size: 8, style: :bold if qr
+          bank.each { |label, value| pdf.text "<color rgb='#{MUTED}'>#{label}:</color> #{escape(value)}", size: 8, inline_format: true }
+        end
+      end
+    end
+    # whichever ends lower: the text (where the cursor is now) or the QR code
+    qr ? [pdf.cursor, top - QR_SIZE].min : pdf.cursor
+  end
+
+  # A QR code drawn as vector squares (sharp at any zoom); each row's dark runs are one rectangle so no hairlines show
+  def qr_code(pdf, text, at:, size:)
+    modules = RQRCodeCore::QRCode.new(text, level: :m).modules
+    quiet = 3 # light border the scanner needs, in modules
+    cell = size.to_f / (modules.size + 2 * quiet)
+    x0, y0 = at
+    pdf.fill_color '000000'
+    modules.each_with_index do |row, r|
+      c = 0
+      while c < row.size
+        next c += 1 unless row[c]
+
+        run = c
+        c += 1 while c < row.size && row[c]
+        pdf.fill_rectangle([x0 + (run + quiet) * cell, y0 - (r + quiet) * cell], (c - run) * cell, cell)
+      end
+    end
   end
 
   # Up to 3 quotations for the same products: pros / cons on price, benefits, quality, savings and support,

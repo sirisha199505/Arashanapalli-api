@@ -16,14 +16,16 @@ class App::Services::CustomerAccount < App::Services::Base
 
     code = format('%06d', SecureRandom.random_number(1_000_000))
     CustomerLogin.create(email: email, code_digest: BCrypt::Password.create(code), expires_at: Time.now + CODE_MINUTES * 60, created_ip: App.cu.ip)
-    if Mailer.configured?
+    emailed = Mailer.configured?
+    if emailed
       Mailer.deliver(to: email, subject: "#{code} is your #{Company::NAME} sign-in code",
                      text: "Your sign-in code is #{code}. It works for #{CODE_MINUTES} minutes.\n\nUse it to see your quotations from #{Company::NAME}.\nIf you didn't ask for this, ignore this email.")
     else
       App.logger.info("[development] sign-in code for #{email}: #{code}")
     end
-    # the same answer whether or not this email has quotations
-    return_success(sent: true, minutes: CODE_MINUTES)
+    # the same answer whether or not this email has quotations; emailed: false only on a developer's computer with
+    # no email account set up — the code is then in the backend's terminal
+    return_success(sent: true, emailed: emailed, minutes: CODE_MINUTES)
   end
 
   def verify
