@@ -1,6 +1,6 @@
 class App::Services::Catalog < App::Services::Base
   # Building the catalog takes seconds on a small server, and every visit to the website asks for it, so the finished
-  # JSON is kept for a minute and shared by all visitors. Staff changes clear it (see routes.rb), so they show at once.
+  # JSON is kept for a minute and shared by all visitors. Staff changes rebuild it (see routes.rb), so they show at once.
   CACHE_SECONDS = 60
   @lock = Mutex.new
 
@@ -18,6 +18,17 @@ class App::Services::Catalog < App::Services::Base
 
     def expire!
       @lock.synchronize { @json = nil }
+    end
+
+    # After a staff change: drop the old catalog and build the new one straight away in the background, so the next
+    # visitor gets it at once instead of waiting seconds for the rebuild (and the website falling back to a saved copy).
+    def refresh!
+      expire!
+      Thread.new do
+        cached_json { new(nil).send(:build).to_json }
+      rescue => e
+        App.logger.error("Catalog rebuild failed: #{e.message}")
+      end
     end
   end
 
