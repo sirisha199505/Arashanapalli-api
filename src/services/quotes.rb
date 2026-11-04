@@ -40,7 +40,17 @@ class App::Services::Quotes < App::Services::Base
   # Anyone with a quotation ID can see that quotation (the ID is not guessable); phone search is staff-only.
   def track
     quote = Quote.find_by_number(qs[:number]) || return_errors!('No quotation found with that ID', 404)
-    return_success(quote.public_view)
+    payment = QuotePdf.payable?(quote) ? { upi_id: Company::UPI_ID, upi_name: Company::UPI_NAME, link: QuotePdf.upi_link(quote) } : nil
+    return_success(quote.public_view.merge(payment: payment))
+  end
+
+  # "Scan to pay" UPI QR code (SVG) for the quotation's exact total — only while it can be paid (see QuotePdf.payable?)
+  def upi_qr
+    quote = Quote.find_by_number(qs[:number]) || return_errors!('No quotation found with that ID', 404)
+    return_errors!('This quotation cannot be paid online', 404) unless QuotePdf.payable?(quote)
+    request.response['Content-Type'] = 'image/svg+xml'
+    request.response['Cache-Control'] = 'no-store'
+    QuotePdf.qr_svg(QuotePdf.upi_link(quote))
   end
 
   # Branded PDF of one quotation (anyone with its ID — same as track)

@@ -11,7 +11,9 @@ module Company
 
   # Payment details printed on quotation PDFs. With a UPI ID set, each quotation gets a QR code for its exact total
   # (scan in GPay / PhonePe / Paytm → amount and quotation ID filled in). Bank details are printed when set.
-  UPI_ID = ENV.fetch('PAYMENT_UPI_ID', '').strip # e.g. arashanapalli@okhdfcbank
+  # DUMMY UPI ID so the "Scan to pay" QR shows on PDFs and the website — set PAYMENT_UPI_ID to the shop's real one
+  # before going live, or payments will not reach the shop.
+  UPI_ID = ENV.fetch('PAYMENT_UPI_ID', '').strip.presence || 'arashanapallitraders.demo@upi'
   UPI_NAME = ENV.fetch('PAYMENT_UPI_NAME', NAME) # the payee name the customer's app shows
   BANK_NAME = ENV.fetch('PAYMENT_BANK_NAME', '')
   ACCOUNT_NAME = ENV.fetch('PAYMENT_ACCOUNT_NAME', '')

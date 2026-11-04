@@ -25,7 +25,7 @@ class ProductImport
   SPECS = { 'warranty' => 'Warranty', 'guarantee' => 'Guarantee', 'material' => 'Material', 'finish' => 'Finish options',
             'certification' => 'Certification', 'origin' => 'Brand origin', 'support' => 'After-sales support' }.freeze
   # what an audit entry calls each product column
-  LABELS = { name: 'Name', category: 'Category', unit: 'Unit', base_price: 'Base price', gst_rate: 'GST rate', hsn_code: 'HSN code',
+  LABELS = { name: 'Name', category: 'Category', subcategory: 'Sub-category', unit: 'Unit', base_price: 'Base price', gst_rate: 'GST rate', hsn_code: 'HSN code',
              specification: 'Specification', description: 'Description', image: 'Photo', active: 'Shown on website',
              new_arrival: 'New arrival', sku: 'Item code / SKU', brand_ids: 'Brands' }.freeze
   MAX_ERRORS = 300
@@ -214,7 +214,8 @@ class ProductImport
 
       photo = text(field(cells, 'Photo'))
       {
-        row: row, name: name, key: key, sku: text(field(cells, 'Your item code')).presence, category: category, unit: unit,
+        row: row, name: name, key: key, sku: text(field(cells, 'Your item code')).presence, category: category,
+        subcategory: text(field(cells, 'Sub-category') || field(cells, 'Subcategory') || field(cells, 'Sub category')).presence, unit: unit,
         base_price: price, gst_rate: gst, hsn_code: text(field(cells, 'HSN')).presence,
         specification: text(field(cells, 'Size')).presence, description: text(field(cells, 'Description')).presence,
         image: (photo if link?(photo)), photo_file: (photo.presence unless link?(photo)), active: show, new_arrival: fresh
@@ -366,7 +367,7 @@ class ProductImport
         @new_products << {
           id: product_id, code: code, name: p[:name], brand_ids: brand_list, series_keys: series_keys,
           brand_changes: detail_changes(product_id, rows, brand_ids, brand_names),
-          values: { name: p[:name], category: p[:category], unit: p[:unit], base_price: p[:base_price], gst_rate: p[:gst_rate],
+          values: { name: p[:name], category: p[:category], subcategory: p[:subcategory], unit: p[:unit], base_price: p[:base_price], gst_rate: p[:gst_rate],
                     hsn_code: p[:hsn_code], specification: p[:specification], description: p[:description], image: p[:image],
                     sku: p[:sku], active: p[:active].nil? ? true : p[:active], new_arrival: p[:new_arrival] || false, mock: false }
         }
@@ -409,7 +410,7 @@ class ProductImport
     { name: row[:name], category: row[:category], unit: row[:unit], base_price: row[:base_price], gst_rate: row[:gst_rate] }.each do |k, v|
       values[k] = v if existing[k] != v
     end
-    %i[hsn_code specification description image sku active new_arrival].each do |k|
+    %i[subcategory hsn_code specification description image sku active new_arrival].each do |k|
       v = row[k]
       values[k] = v if !v.nil? && existing[k] != v
     end

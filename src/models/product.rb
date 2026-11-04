@@ -57,7 +57,7 @@ class App::Models::Product < Sequel::Model
   # Shape the frontend catalog expects
   def as_catalog
     {
-      id: id, name: name, category: category, image: image, description: description,
+      id: id, name: name, category: category, subcategory: self[:subcategory].presence, image: image, description: description,
       unit: unit, basePrice: base_price, brandIds: brand_ids.to_a, mock: mock,
       code: code, newArrival: new_arrival, seriesIds: series_ids.to_a, spec: specification
     }.compact

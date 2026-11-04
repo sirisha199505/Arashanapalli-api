@@ -42,6 +42,7 @@ class App::Routes < Roda
       r.post('quotes') { Quotes[r].submit }
       r.get('quotes/track', String) { |number| Quotes[r, number: number].track }
       r.get('quotes/pdf', String) { |number| Quotes[r, number: number].pdf }
+      r.get('quotes/upi-qr', String) { |number| Quotes[r, number: number].upi_qr }
       r.get('quotes/compare.pdf') { Quotes[r].compare_pdf }
       r.get('quotes/compare') { Quotes[r].compare }
 

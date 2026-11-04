@@ -235,6 +235,24 @@ module QuotePdf
     end
   end
 
+  # The same QR code as an SVG for the website: one path, each row's dark runs as one rectangle
+  def qr_svg(text, quiet: 3)
+    modules = RQRCodeCore::QRCode.new(text, level: :m).modules
+    size = modules.size + 2 * quiet
+    path = +''
+    modules.each_with_index do |row, r|
+      c = 0
+      while c < row.size
+        next c += 1 unless row[c]
+
+        run = c
+        c += 1 while c < row.size && row[c]
+        path << "M#{run + quiet} #{r + quiet}h#{c - run}v1h-#{c - run}z"
+      end
+    end
+    %(<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 #{size} #{size}" shape-rendering="crispEdges"><rect width="#{size}" height="#{size}" fill="#fff"/><path d="#{path}" fill="#000"/></svg>)
+  end
+
   # Up to 3 quotations for the same products: pros / cons on price, benefits, quality, savings and support,
   # then each item's brand and price side by side
   def comparison(quotes, results)

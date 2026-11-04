@@ -58,7 +58,11 @@ namespace :db do
         data['brands'].map { |b| b.merge('specs' => Sequel.pg_jsonb(b['specs'])) }
       )
       db[:products].insert_conflict.multi_insert(
-        data['products'].map { |p| p.merge('brand_ids' => Sequel.pg_array(p['brand_ids'], :text)) }
+        data['products'].map do |p|
+          # sample products are named "<type> – <variant>": the type is their subcategory
+          sub = p['subcategory'] || (p['name'].split(' – ').first if p['mock'] && p['name'].include?(' – '))
+          p.merge('brand_ids' => Sequel.pg_array(p['brand_ids'], :text), 'subcategory' => sub)
+        end
       )
     end
     App::Models::Product.assign_missing_codes!
