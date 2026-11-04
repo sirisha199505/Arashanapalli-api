@@ -53,6 +53,8 @@ class App::Routes < Roda
 
       # Authentication required for all routes below
       auth_required!
+      # any staff change may touch products, brands, prices or categories: the website's cached catalog is rebuilt
+      App::Services::Catalog.expire! unless r.get?
 
       # The signed-in staff member
       r.on 'me' do

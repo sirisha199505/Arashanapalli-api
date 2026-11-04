@@ -1,8 +1,37 @@
 class App::Services::Catalog < App::Services::Base
-  # Public: everything the website needs to render products, brands and prices.
+  # Building the catalog takes seconds on a small server, and every visit to the website asks for it, so the finished
+  # JSON is kept for a minute and shared by all visitors. Staff changes clear it (see routes.rb), so they show at once.
+  CACHE_SECONDS = 60
+  @lock = Mutex.new
+
+  class << self
+    def cached_json
+      @lock.synchronize do
+        now = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+        if @json.nil? || now - @built_at > CACHE_SECONDS
+          @json = yield
+          @built_at = now
+        end
+        @json
+      end
+    end
+
+    def expire!
+      @lock.synchronize { @json = nil }
+    end
+  end
+
+  # Public: the catalog as JSON text (a String goes out as the response body unchanged).
+  def show
+    self.class.cached_json { build.to_json }
+  end
+
+  private
+
+  # Everything the website needs to render products, brands and prices.
   # Hidden brands are left off every product, and products in a hidden category or with no visible brand are left out,
   # so the website never sees a reference it can't resolve.
-  def show
+  def build
     brands = Brand.where(active: true).order(:position, :name).all
     series = BrandSeries.where(active: true).order(:position, :name).all.group_by(&:brand_id)
     brand_ids = brands.map(&:id)
